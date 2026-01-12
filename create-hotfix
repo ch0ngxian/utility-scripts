@@ -24,6 +24,95 @@ print_info() {
     echo -e "${YELLOW}➜ $1${NC}"
 }
 
+# Step progress variables
+TOTAL_STEPS=7
+CURRENT_STEP=0
+
+# Function to print step progress
+print_step() {
+    ((CURRENT_STEP++))
+    echo ""
+    echo -e "${YELLOW}[${CURRENT_STEP}/${TOTAL_STEPS}] $1${NC}"
+}
+
+# Global variable to store command output for summary extraction
+CMD_OUTPUT=""
+TAIL_LINES=5
+
+# Function to run command with live tail output and capture result
+run_cmd() {
+    local tmp_file=$(mktemp)
+
+    # Run command, output to temp file
+    "$@" > "$tmp_file" 2>&1 &
+    local cmd_pid=$!
+
+    # Show live tail of output
+    tail -n $TAIL_LINES -f "$tmp_file" 2>/dev/null &
+    local tail_pid=$!
+
+    # Wait for command to finish
+    wait $cmd_pid
+    local exit_code=$?
+
+    # Small delay to let tail catch up
+    sleep 0.1
+
+    # Kill tail process
+    kill $tail_pid 2>/dev/null
+    wait $tail_pid 2>/dev/null
+
+    # Count lines shown and clear them
+    local lines_shown=$(wc -l < "$tmp_file")
+    if [ "$lines_shown" -gt "$TAIL_LINES" ]; then
+        lines_shown=$TAIL_LINES
+    fi
+
+    # Move cursor up and clear the tail output
+    for ((i=0; i<lines_shown; i++)); do
+        printf "\033[1A\033[2K"
+    done
+
+    # Store output for summary extraction
+    CMD_OUTPUT=$(cat "$tmp_file")
+    rm -f "$tmp_file"
+
+    return $exit_code
+}
+
+# Summary extraction helpers
+parse_push_stats() {
+    local output="$1"
+    local objects=$(echo "$output" | grep -oE 'Total [0-9]+' | head -1 | grep -oE '[0-9]+')
+    local bytes=$(echo "$output" | grep -oE '[0-9.]+ (KiB|bytes)' | head -1)
+
+    if [ -n "$objects" ]; then
+        if [ -n "$bytes" ]; then
+            echo "$objects objects, $bytes"
+        else
+            echo "$objects objects"
+        fi
+    else
+        echo ""
+    fi
+}
+
+parse_pull_stats() {
+    local output="$1"
+    if echo "$output" | grep -q "Fast-forward"; then
+        local commits=$(echo "$output" | grep -oE 'by [0-9]+ commits' | head -1 | grep -oE '[0-9]+')
+        if [ -n "$commits" ]; then
+            echo "fast-forward, $commits commits"
+        else
+            echo "fast-forward"
+        fi
+    elif echo "$output" | grep -q "Already up to date"; then
+        echo "already up to date"
+    else
+        echo ""
+    fi
+}
+
 # Function to check if there are uncommitted changes
 check_uncommitted_changes() {
     if [[ -n $(git status -s) ]]; then
@@ -73,68 +162,104 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Step 1: Stash changes if any
+print_step "Stashing current changes"
 if [ "$HAS_CHANGES" = true ]; then
-    print_info "Stashing current changes..."
-    git stash push -m "Temp stash for hotfix: $HOTFIX_BRANCH"
-    print_success "Changes stashed"
+    if run_cmd git stash push -m "Temp stash for hotfix: $HOTFIX_BRANCH"; then
+        print_success "Stashed changes"
+    else
+        print_error "Failed to stash changes"
+        echo "$CMD_OUTPUT"
+        exit 1
+    fi
+else
+    print_success "Skipped (no changes to stash)"
 fi
 
 # Step 2: Fetch from remote
-print_info "Fetching from remote..."
-git fetch origin
-print_success "Fetched from remote"
+print_step "Fetching latest changes from remote"
+if run_cmd git fetch origin; then
+    print_success "Fetched from origin"
+else
+    print_error "Failed to fetch from origin"
+    echo "$CMD_OUTPUT"
+    exit 1
+fi
 
 # Step 3: Update master branch
-print_info "Checking out master..."
-git checkout master
-
-print_info "Pulling latest master..."
-if [ $(git rev-list HEAD...origin/master --count) -gt 0 ]; then
-    git pull origin master
-    print_success "Master updated"
+print_step "Updating master branch"
+git checkout master > /dev/null 2>&1
+if run_cmd git pull origin master; then
+    pull_stats=$(parse_pull_stats "$CMD_OUTPUT")
+    if [ -n "$pull_stats" ]; then
+        print_success "Updated master ($pull_stats)"
+    else
+        print_success "Updated master"
+    fi
 else
-    print_success "Master is already up to date"
+    print_error "Failed to update master"
+    echo "$CMD_OUTPUT"
+    exit 1
 fi
 
 # Step 4: Update develop branch
-print_info "Checking out develop..."
+print_step "Updating develop branch"
 if branch_exists develop; then
-    git checkout develop
+    git checkout develop > /dev/null 2>&1
 else
-    print_info "Branch 'develop' does not exist locally. Creating from remote..."
-    git checkout -b develop origin/develop
+    git checkout -b develop origin/develop > /dev/null 2>&1
 fi
-
-print_info "Pulling latest develop..."
-if [ $(git rev-list HEAD...origin/develop --count) -gt 0 ]; then
-    git pull origin develop
-    print_success "Develop updated"
+if run_cmd git pull origin develop; then
+    pull_stats=$(parse_pull_stats "$CMD_OUTPUT")
+    if [ -n "$pull_stats" ]; then
+        print_success "Updated develop ($pull_stats)"
+    else
+        print_success "Updated develop"
+    fi
 else
-    print_success "Develop is already up to date"
+    print_error "Failed to update develop"
+    echo "$CMD_OUTPUT"
+    exit 1
 fi
 
 # Step 5: Create hotfix branch from master
-print_info "Creating hotfix branch: $HOTFIX_BRANCH from master..."
-git checkout master
-git checkout -b "$HOTFIX_BRANCH"
-print_success "Created branch $HOTFIX_BRANCH"
+print_step "Creating hotfix branch"
+git checkout master > /dev/null 2>&1
+if git checkout -b "$HOTFIX_BRANCH" > /dev/null 2>&1; then
+    print_success "Created $HOTFIX_BRANCH from master"
+else
+    print_error "Failed to create branch $HOTFIX_BRANCH"
+    exit 1
+fi
 
 # Step 6: Apply stashed changes if any
+print_step "Applying stashed changes"
 if [ "$HAS_CHANGES" = true ]; then
-    print_info "Applying stashed changes..."
-    if git stash pop; then
-        print_success "Changes applied"
+    if run_cmd git stash pop; then
+        print_success "Applied stashed changes"
     else
         print_error "Failed to apply stashed changes"
         print_error "Please resolve conflicts manually"
+        echo "$CMD_OUTPUT"
         exit 1
     fi
+else
+    print_success "Skipped (no changes to apply)"
 fi
 
 # Step 7: Push branch to remote
-print_info "Pushing branch to remote..."
-git push -u origin "$HOTFIX_BRANCH"
-print_success "Pushed branch to remote"
+print_step "Pushing branch to remote"
+if run_cmd git push -u origin "$HOTFIX_BRANCH"; then
+    push_stats=$(parse_push_stats "$CMD_OUTPUT")
+    if [ -n "$push_stats" ]; then
+        print_success "Pushed $HOTFIX_BRANCH ($push_stats)"
+    else
+        print_success "Pushed $HOTFIX_BRANCH"
+    fi
+else
+    print_error "Failed to push branch"
+    echo "$CMD_OUTPUT"
+    exit 1
+fi
 
 echo ""
 print_success "Hotfix branch '$HOTFIX_BRANCH' created and pushed successfully!"
