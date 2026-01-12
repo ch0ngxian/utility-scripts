@@ -6,8 +6,7 @@ class Heycx < Formula
   license "MIT"
   version "1.0.1"
 
-  # git and gh are runtime dependencies but not declared here
-  # since they're typically pre-installed and the script handles their absence
+  bottle :unneeded
 
   def install
     bin.install "heycx"
