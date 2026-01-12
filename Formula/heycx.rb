@@ -1,13 +1,13 @@
 class Heycx < Formula
   desc "Opinionated utility toolkit that makes developer life better"
   homepage "https://github.com/ch0ngxian/homebrew-heycx"
-  url "https://github.com/ch0ngxian/homebrew-heycx/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "634e41c0c5f9fa15959cd3f56f6cc4048b79d6e6806a89beb72cbfaaa5d14943"
+  url "https://github.com/ch0ngxian/homebrew-heycx/archive/refs/tags/v1.0.1.tar.gz"
+  sha256 "PLACEHOLDER"
   license "MIT"
-  version "1.0.0"
+  version "1.0.1"
 
-  depends_on "git"
-  depends_on "gh" => :recommended
+  # git and gh are runtime dependencies but not declared here
+  # since they're typically pre-installed and the script handles their absence
 
   def install
     bin.install "heycx"
