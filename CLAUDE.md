@@ -95,3 +95,7 @@ gh workflow list | grep -i "prod" | grep -i "deployment"
 ```
 
 If found, triggers it on master. If not found or gh unavailable, continues without error.
+
+### Documentation
+
+Always update README.md when adding, updating, or removing scripts.
