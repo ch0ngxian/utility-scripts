@@ -6,7 +6,10 @@ class Heycx < Formula
   license "MIT"
   version "1.0.1"
 
-  bottle :unneeded
+  bottle do
+    root_url "https://github.com/ch0ngxian/homebrew-heycx/releases/download/v1.0.1"
+    sha256 cellar: :any_skip_relocation, all: "5b633e6d8750f20a8863ef474bd457fdd357f1a8fdd14324cc59191dd04c0f55"
+  end
 
   def install
     bin.install "heycx"
