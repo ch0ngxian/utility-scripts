@@ -4,27 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This repository contains Git workflow automation scripts for managing hotfix branches in a Git Flow-style workflow with `master` and `develop` branches.
+This repository contains `heycx`, an opinionated CLI toolkit for Git workflow automation. It's distributed via Homebrew.
 
 ## Architecture
 
-### Hotfix Workflow
+### CLI Structure
 
-The repository implements a two-script hotfix workflow:
+```
+heycx
+├── hotfix
+│   ├── start    # Prompts for name, creates hotfix/<name> from master
+│   └── finish   # Merges hotfix → master → develop
+└── sync         # Updates master & develop branches
+```
 
-1. **create-hotfix** - Creates a new hotfix branch from master
-   - Stashes any uncommitted changes
-   - Fetches and updates both master and develop branches
-   - Creates hotfix branch (must be named `hotfix/*`)
-   - Applies stashed changes back
-   - Pushes new branch to remote
-
-2. **finish-hotfix** - Completes a hotfix by merging it back
-   - Merges hotfix into master (with --no-ff)
-   - Merges master into develop (with --no-ff)
-   - Pushes both branches to remote
-   - Triggers production deployment workflow (searches for workflow matching "prod" + "deployment" keywords)
-   - Deletes local and remote hotfix branches
+The CLI is a single bash script (`heycx`) with subcommand routing.
 
 ### Git Branching Model
 
@@ -36,52 +30,68 @@ All merges use `--no-ff` to preserve branch history.
 
 ## Common Commands
 
-### Creating a Hotfix
+### Start a Hotfix
 
 ```bash
-./create-hotfix hotfix/fix-name
+heycx hotfix start
 ```
 
-This is an interactive script that will:
-- Show what actions will be performed
-- Ask for confirmation before proceeding
-- Handle stashing/unstashing of uncommitted changes automatically
+Prompts for hotfix name interactively, then:
+- Stashes uncommitted changes
+- Updates master and develop branches
+- Creates `hotfix/<name>` from master
+- Applies stashed changes
+- Pushes branch to remote
 
-### Finishing a Hotfix
+### Finish a Hotfix
 
 ```bash
-./finish-hotfix
+heycx hotfix finish
 ```
 
 Requirements:
 - Must be run from a `hotfix/*` branch
-- No uncommitted changes allowed (will fail with error)
-- Requires `gh` CLI for triggering deployment workflows
+- No uncommitted changes allowed
 
-## Script Dependencies
+### Sync Branches
 
-- **Git** - All standard git commands
-- **gh** (GitHub CLI) - Used by finish-hotfix to trigger production deployment workflows
-  - If gh is not available or workflow not found, script continues without triggering deployment
+```bash
+heycx sync
+```
+
+Updates master and develop from remote, returns to original branch.
+
+## Dependencies
+
+- **Git** - Required
+- **gh** (GitHub CLI) - Optional, used by `hotfix finish` to trigger deployment workflows
+
+## Homebrew Distribution
+
+The Formula is in `Formula/heycx.rb`. To release:
+
+1. Tag a new version: `git tag -a v1.x.x -m "Release"`
+2. Push tag: `git push origin v1.x.x`
+3. Create GitHub Release
+4. Update SHA256 in formula: `curl -sL <tarball-url> | shasum -a 256`
 
 ## Important Patterns
 
 ### Error Handling
 
-Both scripts use `set -e` to exit immediately on errors. This means:
-- Any failed git command will stop the script
+The script uses `set -e` to exit immediately on errors:
+- Failed git commands stop execution
 - Merge conflicts require manual resolution
-- The scripts will not continue past failures
 
-### User Confirmation
+### Interactive Prompts
 
-create-hotfix shows all planned actions and requires user confirmation (`y/N`) before proceeding.
+`heycx hotfix start` prompts for the branch name and shows planned actions before proceeding.
 
 ### Workflow Triggering
 
-finish-hotfix searches for a production deployment workflow using:
+`heycx hotfix finish` searches for a production deployment workflow:
 ```bash
 gh workflow list | grep -i "prod" | grep -i "deployment"
 ```
 
-If found, it triggers the workflow on the master branch. If not found or gh unavailable, the script continues without error.
+If found, triggers it on master. If not found or gh unavailable, continues without error.
