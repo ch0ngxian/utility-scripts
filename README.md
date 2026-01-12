@@ -1,4 +1,4 @@
-# heycx
+# Hey CX!
 
 Opinionated utility toolkit that makes developer life better.
 
