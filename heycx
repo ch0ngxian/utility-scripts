@@ -100,7 +100,11 @@ demo_hotfix_start() {
 
     print_info "Demo mode: no changes will be made"
     HOTFIX_NAME="demo-fix-login-bug"
-    HOTFIX_BRANCH="hotfix/$HOTFIX_NAME"
+    if [[ "$HOTFIX_NAME" =~ ^hotfix/ ]]; then
+        HOTFIX_BRANCH="$HOTFIX_NAME"
+    else
+        HOTFIX_BRANCH="hotfix/$HOTFIX_NAME"
+    fi
     echo ""
 
     print_info "This will:"
@@ -328,8 +332,11 @@ cmd_hotfix_start() {
     TOTAL_STEPS=6
     CURRENT_STEP=0
 
-    # Prompt for hotfix name
-    read -p "Enter hotfix name: " HOTFIX_NAME
+    # Accept hotfix name argument or prompt
+    HOTFIX_NAME="${1:-}"
+    if [ -z "$HOTFIX_NAME" ]; then
+        read -p "Enter hotfix name: " HOTFIX_NAME
+    fi
 
     if [ -z "$HOTFIX_NAME" ]; then
         print_error "Hotfix name cannot be empty"
@@ -347,7 +354,7 @@ cmd_hotfix_start() {
         echo ""
     fi
 
-    # Confirm action
+    # Show planned actions
     print_info "This will:"
     echo "  1. Stash current changes (if any)"
     echo "  2. Fetch latest changes from remote"
@@ -355,12 +362,6 @@ cmd_hotfix_start() {
     echo "  4. Create hotfix branch '$HOTFIX_BRANCH' from master"
     echo "  5. Apply stashed changes (if any)"
     echo ""
-    read -p "Do you want to continue? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_error "Aborted by user"
-        exit 1
-    fi
 
     # Step 1: Stash changes if any
     print_step "Stashing current changes"
