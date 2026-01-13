@@ -10,13 +10,12 @@ brew install ch0ngxian/heycx/heycx
 
 ## Commands
 
-### `heycx hotfix start`
+### `heycx hotfix start [name]`
 
 Start a new hotfix branch from master.
 
 ```bash
-$ heycx hotfix start
-Enter hotfix name: fix-login-bug
+$ heycx hotfix start fix-login-bug
 ✓ Created hotfix/fix-login-bug
 ```
 
@@ -25,7 +24,6 @@ Enter hotfix name: fix-login-bug
 - Fetches and updates master and develop branches
 - Creates `hotfix/<name>` from master
 - Re-applies stashed changes
-- Pushes branch to remote
 
 ### `heycx hotfix finish`
 
