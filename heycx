@@ -5,7 +5,7 @@
 
 set -e  # Exit on error
 
-VERSION="1.0.2"
+VERSION="1.0.3"
 DEMO=false
 
 # ============================================================================
@@ -99,7 +99,7 @@ demo_hotfix_start() {
     CURRENT_STEP=0
 
     print_info "Demo mode: no changes will be made"
-    HOTFIX_NAME="demo-fix-login-bug"
+    HOTFIX_NAME="${1:-demo-fix-login-bug}"
     if [[ "$HOTFIX_NAME" =~ ^hotfix/ ]]; then
         HOTFIX_BRANCH="$HOTFIX_NAME"
     else
@@ -325,7 +325,7 @@ require_clean_working_tree() {
 
 cmd_hotfix_start() {
     if [ "$DEMO" = true ]; then
-        demo_hotfix_start
+        demo_hotfix_start "$1"
         return
     fi
 
@@ -792,7 +792,7 @@ show_help() {
     echo "Usage: heycx <command> [subcommand]"
     echo ""
     echo "Commands:"
-    echo "  heycx hotfix start         Start a new hotfix branch"
+    echo "  heycx hotfix start [name]  Start a new hotfix branch"
     echo "  heycx hotfix finish        Complete hotfix (merge to master & develop)"
     echo "  heycx sync                 Update master & develop branches"
     echo "  heycx docker enter <name>  Enter a running Docker container by name"
@@ -803,15 +803,16 @@ show_help() {
 show_hotfix_help() {
     echo -e "${CYAN}${BOLD}heycx hotfix${NC} - Hotfix workflow commands"
     echo ""
-    echo "Usage: heycx hotfix <subcommand>"
+    echo "Usage: heycx hotfix <subcommand> [args]"
     echo ""
     echo "Subcommands:"
-    echo "  ${BOLD}start${NC}     Start a new hotfix branch from master"
-    echo "  ${BOLD}finish${NC}    Complete hotfix (merge to master & develop)"
+    echo "  ${BOLD}start [name]${NC}  Start a new hotfix branch from master"
+    echo "  ${BOLD}finish${NC}        Complete hotfix (merge to master & develop)"
     echo ""
     echo "Examples:"
-    echo "  heycx hotfix start      # Prompts for name, creates hotfix/<name>"
-    echo "  heycx hotfix finish     # Merges current hotfix branch"
+    echo "  heycx hotfix start              # Prompts for name, creates hotfix/<name>"
+    echo "  heycx hotfix start fix-bug      # Creates hotfix/fix-bug directly"
+    echo "  heycx hotfix finish             # Merges current hotfix branch"
 }
 
 show_docker_help() {
@@ -848,7 +849,7 @@ case "${1:-}" in
     hotfix)
         case "${2:-}" in
             start)
-                cmd_hotfix_start
+                cmd_hotfix_start "$3"
                 ;;
             finish)
                 cmd_hotfix_finish
