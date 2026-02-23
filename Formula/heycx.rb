@@ -1,10 +1,10 @@
 class Heycx < Formula
   desc "Opinionated utility toolkit that makes developer life better"
   homepage "https://github.com/ch0ngxian/homebrew-heycx"
-  url "https://github.com/ch0ngxian/homebrew-heycx/archive/refs/tags/v1.2.1.tar.gz"
-  sha256 "7fb1ecba54ed49b7d8a6cc493379c1ae6e0c01d8f6bc8605d9cb50b66fba0d07"
+  url "https://github.com/ch0ngxian/homebrew-heycx/archive/refs/tags/v1.2.2.tar.gz"
+  sha256 "f50c0ed614eef4f61829fb0ea1c20899427bd46263f4954e713f58b7fa990551"
   license "MIT"
-  version "1.2.1"
+  version "1.2.2"
 
   def install
     bin.install "heycx"
