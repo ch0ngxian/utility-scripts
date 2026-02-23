@@ -48,6 +48,27 @@ $ heycx hotfix finish
 - Must be run from a `hotfix/*` branch
 - No uncommitted changes allowed
 
+### `heycx pr create`
+
+Create a GitHub pull request for the current branch.
+
+```bash
+$ heycx pr create
+PR title (Fix login bug):
+PR description (optional): Fixes the login timeout issue
+✓ Created PR #42: Fix login bug
+```
+
+**What it does:**
+- Auto-detects the base branch (`hotfix/*` → master, `feature/*` → develop, others → prompt)
+- Generates a default PR title from the branch name
+- Pushes the current branch to remote
+- Creates a pull request via `gh`
+
+**Requirements:**
+- Must not be on `master` or `develop`
+- Requires `gh` (GitHub CLI) to be installed and authenticated
+
 ### `heycx sync`
 
 Update master and develop branches from remote.
